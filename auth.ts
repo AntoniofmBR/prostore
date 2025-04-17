@@ -5,7 +5,6 @@ import { compareSync } from 'bcrypt-ts-edge';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '@/db/prisma';
 import { authConfig } from './auth.config.';
-import { cookies } from 'next/headers';
 
 
 
@@ -71,10 +70,58 @@ export const config = {
 
       return session;
     },
+    // async jwt({ token, user, trigger, session }: any) {
+    //   // Assign user fields to token
+    //   if (user) {
+    //     token.id = user.id
+    //     token.role = user.role;
+
+    //     // If user has no name then use the email
+    //     if (user.name === 'NO_NAME') {
+    //       token.name = user.email!.split('@')[0];
+
+    //       // Update database to reflect the token name
+    //       await prisma.user.update({
+    //         where: { id: user.id },
+    //         data: { name: token.name },
+    //       });
+    //     }
+
+    //     if (trigger === 'signIn' || trigger === 'signUp') {
+    //       const cookiesObjects = await cookies()
+    //       const sessionCartId = cookiesObjects.get('sessionCartId')?.value
+
+    //       if (sessionCartId) {
+    //         const sessionCart = await prisma.cart.findFirst({
+    //           where: {
+    //             id: sessionCartId,
+    //           }
+    //         })
+
+    //         if (sessionCart) {
+    //           await prisma.cart.delete({
+    //             where: {
+    //               userId: user.id
+    //             },
+    //           })
+
+    //           await prisma.cart.update({
+    //             where: {
+    //               id: sessionCart.id,
+    //             },
+    //             data: {
+    //               userId: user.id,
+    //             },
+    //           })
+    //         }
+    //       }
+    //     }
+    //   }
+    //   return token;
+    // },
     async jwt({ token, user, trigger, session }: any) {
       // Assign user fields to token
       if (user) {
-        token.id = user.id
         token.role = user.role;
 
         // If user has no name then use the email
@@ -86,36 +133,6 @@ export const config = {
             where: { id: user.id },
             data: { name: token.name },
           });
-        }
-
-        if (trigger === 'signIn' || trigger === 'signUp') {
-          const cookiesObjects = await cookies()
-          const sessionCartId = cookiesObjects.get('sessionCartId')?.value
-
-          if (sessionCartId) {
-            const sessionCart = await prisma.cart.findFirst({
-              where: {
-                id: sessionCartId,
-              }
-            })
-
-            if (sessionCart) {
-              await prisma.cart.delete({
-                where: {
-                  userId: user.id
-                },
-              })
-
-              await prisma.cart.update({
-                where: {
-                  id: sessionCart.id,
-                },
-                data: {
-                  userId: user.id,
-                },
-              })
-            }
-          }
         }
       }
       return token;
