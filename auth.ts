@@ -1,11 +1,13 @@
-import NextAuth from 'next-auth'
-import type { NextAuthConfig } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@auth/prisma-adapter'
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { compareSync } from 'bcrypt-ts-edge';
+
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { prisma } from '@/db/prisma';
+import { authConfig } from './auth.config.';
+import { cookies } from 'next/headers';
 
 
-import { prisma } from './db/prisma'
-import { compareSync } from 'bcrypt-ts-edge'
 
 export const config = {
   pages: {
@@ -13,8 +15,8 @@ export const config = {
     error: '/sign-in',
   },
   session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 Days
+    strategy: 'jwt' as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -24,32 +26,36 @@ export const config = {
         password: { type: 'password' },
       },
       async authorize(credentials) {
-        if ( credentials === null ) return null
+        if (credentials == null) return null;
 
         // Find user in database
         const user = await prisma.user.findFirst({
           where: {
             email: credentials.email as string,
-          }
-        })
+          },
+        });
 
         // Check if user exists and if the password matches
-        if ( user && user.password ) {
-          const isMatch = compareSync(credentials.password as string,user.password)
+        if (user && user.password) {
+          const isMatch = compareSync(
+            credentials.password as string,
+            user.password
+          );
 
+          // If password is correct, return user
           if (isMatch) {
             return {
               id: user.id,
               name: user.name,
               email: user.email,
               role: user.role,
-            }
+            };
           }
         }
-        // If user does not exist or password not match return null
-        return null
+        // If user does not exist or password does not match return null
+        return null;
       },
-    })
+    }),
   ],
   callbacks: {
     async session({ session, user, trigger, token }: any) {
@@ -68,6 +74,7 @@ export const config = {
     async jwt({ token, user, trigger, session }: any) {
       // Assign user fields to token
       if (user) {
+        token.id = user.id
         token.role = user.role;
 
         // If user has no name then use the email
@@ -80,10 +87,41 @@ export const config = {
             data: { name: token.name },
           });
         }
+
+        if (trigger === 'signIn' || trigger === 'signUp') {
+          const cookiesObjects = await cookies()
+          const sessionCartId = cookiesObjects.get('sessionCartId')?.value
+
+          if (sessionCartId) {
+            const sessionCart = await prisma.cart.findFirst({
+              where: {
+                id: sessionCartId,
+              }
+            })
+
+            if (sessionCart) {
+              await prisma.cart.delete({
+                where: {
+                  userId: user.id
+                },
+              })
+
+              await prisma.cart.update({
+                where: {
+                  id: sessionCart.id,
+                },
+                data: {
+                  userId: user.id,
+                },
+              })
+            }
+          }
+        }
       }
       return token;
     },
+    ...authConfig.callbacks,
   },
-} satisfies NextAuthConfig
+}
 
-export const { handlers, auth, signIn, signOut } = NextAuth(config)
+export const { handlers, auth, signIn, signOut } = NextAuth(config);
