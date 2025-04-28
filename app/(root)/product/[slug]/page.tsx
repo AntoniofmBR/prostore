@@ -19,8 +19,6 @@ export default async function ProductDetailsPage(props: { params: Promise<{ slug
 
   const cart = await getMyCart()
 
-
-
   return (
     <>
       <section>
@@ -78,15 +76,15 @@ export default async function ProductDetailsPage(props: { params: Promise<{ slug
                 { product.stock > 0 && (
                   <div className='flex-center' >
                     <AddToCart
-                      cart={ cart }
-                      item={{ 
+                      cart={cart}
+                      item={{
                         productId: product.id,
                         name: product.name,
                         slug: product.slug,
                         price: product.price,
                         qty: 1,
-                        image: product.images![0]
-                      }} 
+                        image: product.images![0],
+                      }}
                     />
                   </div>
                 ) }
