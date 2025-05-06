@@ -13,7 +13,11 @@ import {
   signInFormSchema,
   signUpFormSchema,
   paymentMethodSchema,
+  updateUserSchema,
 } from '../validators';
+import { PAGE_SIZE } from '../constants';
+import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
 
 // Sign in the user with credentials
 export async function signInWithCredentials(
@@ -175,6 +179,87 @@ export async function updateProfile(user: { name: string, email: string }) {
     return {
       success: true,
       message: 'User updated successfully',
+    }
+
+  } catch (err) {
+    return { success: false, message: formatError(err) }
+  }
+}
+
+// Get all the users
+export async function getAllUsers({
+  limit = PAGE_SIZE,
+  page,
+  query,
+}: {
+  limit?: number
+  page: number
+  query: string
+}) {
+  const queryFilter: Prisma.UserWhereInput = query && query !== 'all' ? {
+      name: {
+        contains: query,
+        mode: 'insensitive'
+      } as Prisma.StringFilter
+  } : {}
+
+  const data = await prisma.user.findMany({
+    where: {
+      ...queryFilter,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    skip: ( page - 1 ) * limit,
+  })
+
+  const dataCount = await prisma.user.count()
+
+  return {
+    data,
+    totalPages: Math.ceil(dataCount /limit),
+  }
+
+}
+
+// Delete user
+export async function deleteUser(userId: string) {
+  try {
+    await prisma.user.delete({
+      where: {
+        id: userId,
+      }
+    })
+
+    revalidatePath('/admin/users')
+
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    }
+
+  } catch (err) {
+    return { success: false, message: formatError(err) }
+  }
+}
+
+// Update user
+export async function updateUser(user: z.infer<typeof updateUserSchema>) {
+  try {
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        name: user.name,
+        role: user.role,
+      },
+    })
+
+    revalidatePath('/admin/users')
+
+    return {
+      success: true,
+      message: 'User updated successfully'
     }
 
   } catch (err) {

@@ -35,28 +35,43 @@ export async function getProductById(productId: string) {
 }
 
 export async function getAllProducts({
-  // query,
+  query,
   limit = PAGE_SIZE,
   page,
-  // category,
+  category,
 }: {
-  query: string,
-  limit?: number,
-  page: number,
-  category?: string
+  query: string;
+  limit?: number;
+  page: number;
+  category?: string;
 }) {
   const data = await prisma.product.findMany({
+    where: {
+      name: {
+        contains: query,
+        mode: 'insensitive',
+      },
+      category: category ? category : undefined,
+    },
     orderBy: { createdAt: 'desc' },
-    skip: ( page - 1 ) * limit,
+    skip: (page - 1) * limit,
     take: limit,
-  })
+  });
 
-  const dataCount = await prisma.product.count()
+  const dataCount = await prisma.product.count({
+    where: {
+      name: {
+        contains: query,
+        mode: 'insensitive',
+      },
+      category: category ? category : undefined,
+    },
+  });
 
   return {
     data,
-    totalPages: Math.ceil( dataCount / limit )
-  }
+    totalPages: Math.ceil(dataCount / limit),
+  };
 }
 
 export async function deleteProduct(id: string) {
