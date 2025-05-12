@@ -30,13 +30,17 @@ import { Order } from '@/types';
 
 import { useToast } from '@/hooks/use-toast';
 
+import StripePayment from './stripe-payment';
+
 export default function OrderDetailsTable({
   order,
   paypalClientId,
+  stripeClientSecret,
   isAdmin,
 }: {
   order: Order,
   paypalClientId: string,
+  stripeClientSecret: string | null
   isAdmin: boolean,
 }) {
   const {
@@ -242,7 +246,7 @@ export default function OrderDetailsTable({
                 <div>Total</div>
                 <div>{ formatCurrency(totalPrice) }</div>
               </div>
-              {/** PayPal Payment  */}
+              {/** PayPal Payment */}
               { !isPaid && paymentMethod === 'PayPal' && (
                 <div>
                   <PayPalScriptProvider options={{ clientId: paypalClientId }} >
@@ -255,7 +259,18 @@ export default function OrderDetailsTable({
                 </div>
               ) }
 
-              {/** Cash On Delivery  */}
+              {/* Stripe Payment */}
+              {
+                !isPaid && paymentMethod === 'Stripe' && stripeClientSecret && (
+                  <StripePayment
+                    priceInCents={ Number(order.totalPrice) * 100 }
+                    orderId={ order.id }
+                    clientSecret={ stripeClientSecret }
+                  />
+                )
+              }
+
+              {/** Cash On Delivery */}
               {
                 isAdmin && !isPaid && paymentMethod === 'CashOnDelivery' && (
                   <MarkAsPaidButton />
